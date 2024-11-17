@@ -9,3 +9,4 @@ tf2onnx
 flask
 pillow
 matplotlib
+gunicorn
