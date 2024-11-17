@@ -1,0 +1,6 @@
+.python
+env/
+.git/
+.vscode/
+.idea/
+.env

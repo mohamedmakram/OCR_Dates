@@ -1,0 +1,11 @@
+fastapi
+tensorflow
+keras
+numpy
+pandas
+uvicorn
+onnxruntime
+tf2onnx
+flask
+pillow
+matplotlib
