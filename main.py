@@ -48,36 +48,36 @@ num_to_char = layers.StringLookup(vocabulary=english_numerals, invert=True, mask
 
 
 # Load the ONNX model# Create inference session with rt.InferenceSession
-providers = ['CPUExecutionProvider']
-onnx_session = ort.InferenceSession('pred_model.onnx', providers=providers)
+# providers = ['CPUExecutionProvider']
+# onnx_session = ort.InferenceSession('pred_model.onnx', providers=providers)
+model = tf.keras.models.load_model('pred_model.h5')
+opt = keras.optimizers.Adam()
+    # Compile the model and return
+model.compile(optimizer=opt)
 
-
-# # Try different providers if available (e.g., 'CPUExecutionProvider', 'CUDAExecutionProvider')
-# try:
-#     onnx_session = ort.InferenceSession(MODEL_PATH, providers=['CPUExecutionProvider']) 
-# except Exception as e:
-#     print(f"Error with CPUExecutionProvider: {e}")
-#     try:
-#         onnx_session = ort.InferenceSession(MODEL_PATH, providers=['CUDAExecutionProvider'])
-#     except Exception as e:
-#         print(f"Error with CUDAExecutionProvider: {e}")
-#         print("Consider upgrading onnxruntime or re-exporting your model with a lower opset version.")
 
 # Get input and output names for the ONNX model
-input_name = onnx_session.get_inputs()[0].name
-output_name = onnx_session.get_outputs()[0].name
+# input_name = onnx_session.get_inputs()[0].name
+# output_name = onnx_session.get_outputs()[0].name
 
-# Helper function to preprocess the image
-def preprocess_image(image_path):
-    """
-    Preprocess the input image to match the ONNX model's expected input shape.
-    """
-    image = Image.open(image_path).convert("L")  # Convert to grayscale
-    image = image.resize((50, 200))  # Resize to (50, 200)
-    image = np.array(image).astype("float32") / 255.0  # Normalize pixel values to [0, 1]
-    image = np.expand_dims(image, axis=-1)  # Add channel dimension
-    image = np.expand_dims(image, axis=0)  # Add batch dimension
-    return image
+
+def encode_single_sample(img_path):
+    # 1. Read image
+    img = tf.io.read_file(img_path)
+    # 2. Decode and convert to grayscale
+    img = tf.io.decode_png(img, channels=1)
+    # 3. Convert to float32 in [0, 1] range
+    img = tf.image.convert_image_dtype(img, tf.float32)
+    # 4. Resize to the desired size
+    img = tf.image.resize(img, [img_height, img_width])
+    # 5. Transpose the image because we want the time
+    # dimension to correspond to the width of the image.
+    img = tf.transpose(img, perm=[1, 0, 2])
+    # 6. Map the characters in label to numbers
+    # label = char_to_num(tf.strings.unicode_split(label, input_encoding="UTF-8"))
+    # 7. Return a dict as our model is expecting two inputs
+    return img
+
 
 # A utility function to decode the output of the network
 def decode_batch_predictions(pred):
@@ -111,11 +111,14 @@ def index():
 
         # Preprocess the image and make a prediction
         try:
-            image = preprocess_image(filepath)
+            image = encode_single_sample(filepath)
+            print(image.shape)
             # Run inference with the ONNX model
-            predictions = onnx_session.run([output_name], {input_name: image})
+            # predictions = onnx_session.run([output_name], {input_name: image})
+            image = tf.reshape(image, [1, 200, 50, 1,])
+            predictions = model.predict(image)
             # preds = prediction_model.predict(batch_images)
-            pred_texts = decode_batch_predictions(predictions[0])
+            pred_texts = decode_batch_predictions(predictions)
 
             # label = tf.strings.reduce_join(num_to_char(label)).numpy().decode("utf-8")
             # predicted_class = np.argmax(predictions[0], axis=-1).tolist()  # Get predicted class
