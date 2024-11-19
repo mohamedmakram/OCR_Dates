@@ -113,8 +113,7 @@ def index():
         try:
             image = encode_single_sample(filepath)
             print(image.shape)
-            # Run inference with the ONNX model
-            # predictions = onnx_session.run([output_name], {input_name: image})
+            # reshape the image
             image = tf.reshape(image, [1, 200, 50, 1,])
             predictions = model.predict(image)
             # preds = prediction_model.predict(batch_images)
